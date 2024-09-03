@@ -36,110 +36,76 @@
             font-size: 1em;
             white-space: pre-wrap; /* Preserve formatting */
         }
+        input {
+            padding: 0.5em;
+            margin: 0.5em 0;
+            border-radius: 5px;
+            border: none;
+            font-size: 1em;
+        }
+        #fetchDataButton {
+            padding: 0.5em 1em;
+            border: none;
+            border-radius: 5px;
+            background-color: #0072ff;
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 1em;
+        }
+        #fetchDataButton:hover {
+            background-color: #005bb5;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>WS1 UEM API Call</h1>
-        <p>Fetch SmartGroups and IDs from WS1 UEM</p>
+        <p>Fetch data from WS1 UEM</p>
+        <input type="text" id="usernameInput" placeholder="Enter Username" />
+        <input type="password" id="passwordInput" placeholder="Enter Password" />
         <button id="fetchDataButton">Fetch Data</button>
         <pre id="response"></pre>
     </div>
 
     <script>
-        // Config Information
-        const prodTenantCode = "BxsRnFdywvSPbUL+3krBVqqY0qa8EXRvBn+zJttJGkw=";
-        const knryTenantCode = "PFHcvhQ2bDL6/wa2cM1IJ0fqa06mCYPnHKAYJOKoGeY=";
-        const prodHostName = "as1427";
-        const knryHostName = "as1901";
-        const sourceSG = "861";
-        const targetSG = "862";
-        const prodUrl = `https://${prodHostName}.awmdm.com/API/`;
-        const knryUrl = `https://${knryHostName}.awmdm.com/API/`;
-        const apiModule = "mdm/smartgroups/";
-
+        // Function to encode credentials in Base64
         const encodeCredentials = (username, password) => {
             const authInfo = btoa(`${username}:${password}`);
             return `Basic ${authInfo}`;
         };
 
-        // Get credentials (In a real scenario, handle this securely)
-        const getCredentials = async () => {
-            const username = prompt('Enter Username:');
-            const password = prompt('Enter Password:');
+        const getCredentials = () => {
+            const username = document.getElementById('usernameInput').value;
+            const password = document.getElementById('passwordInput').value;
             return { username, password };
         };
 
         document.getElementById('fetchDataButton').addEventListener('click', async () => {
             try {
-                const { username, password } = await getCredentials();
+                const { username, password } = getCredentials();
                 const authInfo = encodeCredentials(username, password);
 
-                // Headers
-                const prodHeaders = {
-                    'aw-tenant-code': prodTenantCode,
+                // Define the API URL and headers
+                const apiUrl = "https://as1427.awmdm.com/API/mdm/smartgroups/861"; // Replace with actual endpoint
+                const headers = {
+                    'aw-tenant-code': 'BxsRnFdywvSPbUL+3krBVqqY0qa8EXRvBn+zJttJGkw=', // Replace with actual tenant code
                     'Authorization': authInfo,
                     'Content-Type': 'application/json'
                 };
 
-                // Fetch SmartGroups Details from Prod
-                const sguri = `${prodUrl}${apiModule}${sourceSG}`;
-                const response = await fetch(sguri, {
-                    method: 'GET',
-                    headers: prodHeaders
-                });
-                const srcSgDetails = await response.json();
-
-                let requestBody = null;
-                const jsonBase = JSON.stringify({ Id: "<id>" });
-
-                srcSgDetails.OrganizationGroups.id.forEach(async (idLkp) => {
-                    // Lookup Group ID
-                    const finalOgUri = `${prodUrl}system/groups/${idLkp}`;
-                    const sourceResponse = await fetch(finalOgUri, {
-                        method: 'GET',
-                        headers: prodHeaders
-                    });
-                    const sourceGIDlkp = await sourceResponse.json();
-                    const sourceGid = sourceGIDlkp.GroupId;
-
-                    console.log(`Looking up Source (${idLkp}) GID: ${sourceGid}`);
-
-                    // Lookup the corresponding GroupID in Prod
-                    const finalProdUri = `${prodUrl}system/groups/${idLkp}`;
-                    const prodResponse = await fetch(finalProdUri, {
-                        method: 'GET',
-                        headers: prodHeaders
-                    });
-                    const prodLgIDLkp = await prodResponse.json();
-                    const prodLgId = prodLgIDLkp.id.Value;
-
-                    if (!prodLgId) {
-                        console.log(`${prodLgId} Not found in Production`);
-                        // Log to file (Not supported in browser)
-                    } else {
-                        console.log(`Production LgID Found: ${prodLgId}`);
-                        if (!requestBody) {
-                            requestBody = jsonBase.replace("<id>", prodLgId);
-                        } else {
-                            requestBody += `,${jsonBase.replace("<id>", prodLgId)}`;
-                        }
-                    }
+                // Make the API call
+                const response = await fetch(apiUrl, {
+                    method: 'GET', // Adjust method as needed
+                    headers: headers
                 });
 
-                const sgBody = JSON.stringify({
-                    OrganizationGroups: JSON.parse(`[${requestBody}]`)
-                });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
 
-                // Update the Target SG
-                const prodSgUpdateUri = `${prodUrl}${apiModule}${targetSG}`;
-                await fetch(prodSgUpdateUri, {
-                    method: 'PUT',
-                    headers: prodHeaders,
-                    body: sgBody
-                });
-
-                document.getElementById('response').textContent = 'Update completed successfully!';
+                const data = await response.json();
+                document.getElementById('response').textContent = JSON.stringify(data, null, 2);
             } catch (error) {
                 document.getElementById('response').textContent = `Error: ${error.message}`;
             }
