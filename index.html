@@ -41,28 +41,108 @@
 <body>
     <div class="container">
         <h1>WS1 UEM API Call</h1>
-        <p>Fetch data from WS1 UEM</p>
+        <p>Fetch SmartGroups and IDs from WS1 UEM</p>
         <button id="fetchDataButton">Fetch Data</button>
         <pre id="response"></pre>
     </div>
 
     <script>
-        document.getElementById('fetchDataButton').addEventListener('click', () => {
-            fetch('https://as1427.awmdm.com/API/mdm/smartgroups/861', {
-                method: 'GET', // or 'POST' depending on the API
-                headers: {
-                    'Authorization': 'Basic a3JvZ2VyXExTNTY2NzQ6S3JvaG9uZ2E5OSEj', // Replace with your Bearer token
-                    'Content-Type': 'application/json',
-                    'aw-tenant-code': 'BxsRnFdywvSPbUL+3krBVqqY0qa8EXRvBn+zJttJGkw='
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('response').textContent = JSON.stringify(data, null, 2);
-            })
-            .catch(error => {
-                document.getElementById('response').textContent = `Error: ${error}`;
-            });
+        // Config Information
+        const prodTenantCode = "BxsRnFdywvSPbUL+3krBVqqY0qa8EXRvBn+zJttJGkw=";
+        const knryTenantCode = "PFHcvhQ2bDL6/wa2cM1IJ0fqa06mCYPnHKAYJOKoGeY=";
+        const prodHostName = "as1427";
+        const knryHostName = "as1901";
+        const sourceSG = "861";
+        const targetSG = "862";
+        const prodUrl = `https://${prodHostName}.awmdm.com/API/`;
+        const knryUrl = `https://${knryHostName}.awmdm.com/API/`;
+        const apiModule = "mdm/smartgroups/";
+
+        const encodeCredentials = (username, password) => {
+            const authInfo = btoa(`${username}:${password}`);
+            return `Basic ${authInfo}`;
+        };
+
+        // Get credentials (In a real scenario, handle this securely)
+        const getCredentials = async () => {
+            const username = prompt('Enter Username:');
+            const password = prompt('Enter Password:');
+            return { username, password };
+        };
+
+        document.getElementById('fetchDataButton').addEventListener('click', async () => {
+            try {
+                const { username, password } = await getCredentials();
+                const authInfo = encodeCredentials(username, password);
+
+                // Headers
+                const prodHeaders = {
+                    'aw-tenant-code': prodTenantCode,
+                    'Authorization': authInfo,
+                    'Content-Type': 'application/json'
+                };
+
+                // Fetch SmartGroups Details from Prod
+                const sguri = `${prodUrl}${apiModule}${sourceSG}`;
+                const response = await fetch(sguri, {
+                    method: 'GET',
+                    headers: prodHeaders
+                });
+                const srcSgDetails = await response.json();
+
+                let requestBody = null;
+                const jsonBase = JSON.stringify({ Id: "<id>" });
+
+                srcSgDetails.OrganizationGroups.id.forEach(async (idLkp) => {
+                    // Lookup Group ID
+                    const finalOgUri = `${prodUrl}system/groups/${idLkp}`;
+                    const sourceResponse = await fetch(finalOgUri, {
+                        method: 'GET',
+                        headers: prodHeaders
+                    });
+                    const sourceGIDlkp = await sourceResponse.json();
+                    const sourceGid = sourceGIDlkp.GroupId;
+
+                    console.log(`Looking up Source (${idLkp}) GID: ${sourceGid}`);
+
+                    // Lookup the corresponding GroupID in Prod
+                    const finalProdUri = `${prodUrl}system/groups/${idLkp}`;
+                    const prodResponse = await fetch(finalProdUri, {
+                        method: 'GET',
+                        headers: prodHeaders
+                    });
+                    const prodLgIDLkp = await prodResponse.json();
+                    const prodLgId = prodLgIDLkp.id.Value;
+
+                    if (!prodLgId) {
+                        console.log(`${prodLgId} Not found in Production`);
+                        // Log to file (Not supported in browser)
+                    } else {
+                        console.log(`Production LgID Found: ${prodLgId}`);
+                        if (!requestBody) {
+                            requestBody = jsonBase.replace("<id>", prodLgId);
+                        } else {
+                            requestBody += `,${jsonBase.replace("<id>", prodLgId)}`;
+                        }
+                    }
+                });
+
+                const sgBody = JSON.stringify({
+                    OrganizationGroups: JSON.parse(`[${requestBody}]`)
+                });
+
+                // Update the Target SG
+                const prodSgUpdateUri = `${prodUrl}${apiModule}${targetSG}`;
+                await fetch(prodSgUpdateUri, {
+                    method: 'PUT',
+                    headers: prodHeaders,
+                    body: sgBody
+                });
+
+                document.getElementById('response').textContent = 'Update completed successfully!';
+            } catch (error) {
+                document.getElementById('response').textContent = `Error: ${error.message}`;
+            }
         });
     </script>
 </body>
