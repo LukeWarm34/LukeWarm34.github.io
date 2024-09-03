@@ -48,11 +48,12 @@
 
     <script>
         document.getElementById('fetchDataButton').addEventListener('click', () => {
-            fetch('https://<your-ws1-uum-endpoint>/api/v1/your-api-endpoint', {
+            fetch('https://as1427.awmdm.com/API/mdm/smartgroups/861', {
                 method: 'GET', // or 'POST' depending on the API
                 headers: {
-                    'Authorization': 'Bearer YOUR_ACCESS_TOKEN', // Replace with your Bearer token
+                    'Authorization': 'Basic a3JvZ2VyXExTNTY2NzQ6S3JvaG9uZ2E5OSEj', // Replace with your Bearer token
                     'Content-Type': 'application/json',
+                    'aw-tenant-code': 'BxsRnFdywvSPbUL+3krBVqqY0qa8EXRvBn+zJttJGkw='
                 }
             })
             .then(response => response.json())
