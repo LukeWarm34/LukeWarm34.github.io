@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hello World</title>
+    <title>WS1 UEM API Call</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -18,7 +18,7 @@
             margin: 0;
         }
         h1 {
-            font-size: 3em;
+            font-size: 2.5em;
             margin: 0;
         }
         p {
@@ -31,12 +31,38 @@
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
         }
+        #response {
+            margin-top: 1em;
+            font-size: 1em;
+            white-space: pre-wrap; /* Preserve formatting */
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Hello World</h1>
-        <p>I'm hosted with GitHub Pages.</p>
+        <h1>WS1 UEM API Call</h1>
+        <p>Fetch data from WS1 UEM</p>
+        <button id="fetchDataButton">Fetch Data</button>
+        <pre id="response"></pre>
     </div>
+
+    <script>
+        document.getElementById('fetchDataButton').addEventListener('click', () => {
+            fetch('https://<your-ws1-uum-endpoint>/api/v1/your-api-endpoint', {
+                method: 'GET', // or 'POST' depending on the API
+                headers: {
+                    'Authorization': 'Bearer YOUR_ACCESS_TOKEN', // Replace with your Bearer token
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(error => {
+                document.getElementById('response').textContent = `Error: ${error}`;
+            });
+        });
+    </script>
 </body>
 </html>
