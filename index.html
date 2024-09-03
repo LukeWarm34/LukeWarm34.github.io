@@ -90,10 +90,14 @@
                 });
                 const srcSgDetails = await response.json();
 
+                if (!srcSgDetails.OrganizationGroups || !Array.isArray(srcSgDetails.OrganizationGroups.id)) {
+                    throw new Error('Unexpected response structure');
+                }
+
                 let requestBody = null;
                 const jsonBase = JSON.stringify({ Id: "<id>" });
 
-                srcSgDetails.OrganizationGroups.id.forEach(async (idLkp) => {
+                for (const idLkp of srcSgDetails.OrganizationGroups.id) {
                     // Lookup Group ID
                     const finalOgUri = `${prodUrl}system/groups/${idLkp}`;
                     const sourceResponse = await fetch(finalOgUri, {
@@ -103,47 +107,4 @@
                     const sourceGIDlkp = await sourceResponse.json();
                     const sourceGid = sourceGIDlkp.GroupId;
 
-                    console.log(`Looking up Source (${idLkp}) GID: ${sourceGid}`);
-
-                    // Lookup the corresponding GroupID in Prod
-                    const finalProdUri = `${prodUrl}system/groups/${idLkp}`;
-                    const prodResponse = await fetch(finalProdUri, {
-                        method: 'GET',
-                        headers: prodHeaders
-                    });
-                    const prodLgIDLkp = await prodResponse.json();
-                    const prodLgId = prodLgIDLkp.id.Value;
-
-                    if (!prodLgId) {
-                        console.log(`${prodLgId} Not found in Production`);
-                        // Log to file (Not supported in browser)
-                    } else {
-                        console.log(`Production LgID Found: ${prodLgId}`);
-                        if (!requestBody) {
-                            requestBody = jsonBase.replace("<id>", prodLgId);
-                        } else {
-                            requestBody += `,${jsonBase.replace("<id>", prodLgId)}`;
-                        }
-                    }
-                });
-
-                const sgBody = JSON.stringify({
-                    OrganizationGroups: JSON.parse(`[${requestBody}]`)
-                });
-
-                // Update the Target SG
-                const prodSgUpdateUri = `${prodUrl}${apiModule}${targetSG}`;
-                await fetch(prodSgUpdateUri, {
-                    method: 'PUT',
-                    headers: prodHeaders,
-                    body: sgBody
-                });
-
-                document.getElementById('response').textContent = 'Update completed successfully!';
-            } catch (error) {
-                document.getElementById('response').textContent = `Error: ${error.message}`;
-            }
-        });
-    </script>
-</body>
-</html>
+                    console.log(`Looking up Source (${idLkp}) GID: ${sourceGid}`)
